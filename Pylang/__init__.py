@@ -109,6 +109,13 @@ class Lang:
                         if self.type == "json": self.lang[fileName] = json.load(contentFile)
                         if self.type == "yaml": self.lang[fileName] = YAML(typ="safe", pure=True).load(contentFile)
 
+                        try:
+                            _ = self.lang[fileName][self.longLangKey]
+                        except:
+                            raise MinssingKeyError(f"Not found {self.longLangKey} key in {fileName}")
+
+                        contentFile.close()
+
                         self.loadedLang.append(fileName)
                 else:
                     raise MatchLangError(fileName)
@@ -193,7 +200,10 @@ class Lang:
         temp = []
 
         for l in self.loadedLang:
-            temp.append(self.lang[l][self.longLangKey])
+            try:
+                temp.append(self.lang[l][self.longLangKey])
+            except KeyError:
+                    raise MinssingKeyError(f"{self.longLangKey}")
 
         return temp
 
