@@ -1,16 +1,13 @@
 import pathlib, locale
 import re as regex
-from typing import Literal
 from .error import MinssingKeyError, NotFoundDefaultLang, MatchLangError, NotLangLoaded
 
-from ruamel.yaml import YAML
 import json
 
 
 class Lang:
 
     langDir: str
-    type: Literal["json", "yaml"]
 
     defaultLang: str = "en_EN"
     selectedLang: str
@@ -25,14 +22,11 @@ class Lang:
 
     lang: dict = {}
 
-    def __init__(self, langDir: str, type: Literal["json", "yaml"] = "yaml", defaultLang: str = "en_EN") -> 'Lang':
+    def __init__(self, langDir: str, defaultLang: str = "en_EN") -> 'Lang':
 
         self.reLang = regex.compile(r"^[a-z]{2}_[A-Z]{2}$")
 
         self.langDir = langDir
-
-        if type in ["json", "yaml"]:
-            self.type = type
 
         try:
             if bool(self.reLang.match(defaultLang)):
@@ -96,29 +90,24 @@ class Lang:
 
     def loadLangFile(self):
 
-        if self.type == "json": ext: list = ["*.json"]
-        if self.type == "yaml": ext: list = ["*.yml", "*.yaml"]
+        for file in pathlib.Path(self.langDir).glob("*.json"):
 
-        for fileExt in ext:
-            for file in pathlib.Path(self.langDir).glob(fileExt):
+            fileName = pathlib.Path(file).stem
 
-                fileName = pathlib.Path(file).stem
+            if bool(self.reLang.match(fileName)):
+                with open(file, 'r', encoding='utf8') as contentFile:
+                    self.lang[fileName] = json.load(contentFile)
 
-                if bool(self.reLang.match(fileName)):
-                    with open(file, 'r', encoding='utf8') as contentFile:
-                        if self.type == "json": self.lang[fileName] = json.load(contentFile)
-                        if self.type == "yaml": self.lang[fileName] = YAML(typ="safe", pure=True).load(contentFile)
+                    try:
+                        _ = self.lang[fileName][self.longLangKey]
+                    except:
+                        raise MinssingKeyError(f"Not found {self.longLangKey} key in {fileName}")
 
-                        try:
-                            _ = self.lang[fileName][self.longLangKey]
-                        except:
-                            raise MinssingKeyError(f"Not found {self.longLangKey} key in {fileName}")
+                    contentFile.close()
 
-                        contentFile.close()
-
-                        self.loadedLang.append(fileName)
-                else:
-                    raise MatchLangError(fileName)
+                    self.loadedLang.append(fileName)
+            else:
+                raise MatchLangError(fileName)
 
 
     def t(self, key: str, index: int = 0) -> str:
@@ -212,6 +201,9 @@ class Lang:
 
     def getIndexDefaultLang(self) -> int:
         return self.indexSelectedLang
+    
+    def getSelectLang(self) -> str:
+        return self.selectedLang
 
 
 
